@@ -1,0 +1,14 @@
+name: CodeQL
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  codeql:
+    uses: pablontiv/crossbeam/.github/workflows/codeql.yml@v1
+    with:
+      language: go
+    permissions:
+      security-events: write
+      contents: read
