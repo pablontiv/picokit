@@ -520,7 +520,7 @@ func TestFileExists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tmpfile.Close()
+	_ = tmpfile.Close()
 
 	if !fileExists(tmpfile.Name()) {
 		t.Fatal("fileExists should return true for existing file")
