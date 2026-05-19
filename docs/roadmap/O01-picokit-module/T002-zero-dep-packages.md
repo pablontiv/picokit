@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Portar paquetes sin dependencias externas (pathsec, diff, fuzzy, hashfile)
