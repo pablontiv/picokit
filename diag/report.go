@@ -34,7 +34,6 @@ type Report struct {
 	Kind        string       `json:"kind"`
 	Summary     Summary      `json:"summary"`
 	Root        string       `json:"root"`
-	RoadmapRoot string       `json:"roadmap_root"`
 	Diagnostics []Diagnostic `json:"diagnostics"`
 }
 
@@ -65,7 +64,6 @@ func NewReport(kind string, root string, diagnostics []Diagnostic) Report {
 		Kind:        kind,
 		Summary:     summarize(copied),
 		Root:        filepath.ToSlash(root),
-		RoadmapRoot: "",
 		Diagnostics: copied,
 	}
 }
