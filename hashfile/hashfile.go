@@ -37,15 +37,15 @@ func WriteAtomic(dest string, r io.Reader, mode os.FileMode) error {
 func writeAtomicWith(f io.WriteCloser, tmp, dest string, r io.Reader) error {
 	if _, err := io.Copy(f, r); err != nil {
 		_ = f.Close()
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	if err := f.Close(); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	if err := os.Rename(tmp, dest); err != nil {
-		os.Remove(tmp)
+		_ = os.Remove(tmp)
 		return err
 	}
 	return nil

@@ -34,7 +34,7 @@ func TestNewFormatter(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			f := NewFormatter(tt.format, tt.maxTokens)
 			if f == nil {
-				t.Errorf("NewFormatter returned nil")
+				t.Fatalf("NewFormatter returned nil")
 			}
 			if f.Format != tt.format {
 				t.Errorf("Expected format %v, got %v", tt.format, f.Format)
@@ -109,10 +109,6 @@ func TestWriteJSON(t *testing.T) {
 				t.Errorf("WriteJSON() produced invalid JSON: %s", output)
 			}
 
-			// Check for indentation
-			if strings.Contains(output, "  ") || output == "" {
-				// Either has indentation or is empty - both are acceptable for indented JSON
-			}
 		})
 	}
 }

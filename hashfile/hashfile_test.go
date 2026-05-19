@@ -251,36 +251,6 @@ type nopWriteCloser struct{ buf *bytes.Buffer }
 func (w *nopWriteCloser) Write(p []byte) (int, error) { return w.buf.Write(p) }
 func (w *nopWriteCloser) Close() error                { return nil }
 
-// partialReader succeeds first call then fails
-type partialReader struct {
-	count int
-}
-
-func (pr *partialReader) Read(p []byte) (n int, err error) {
-	if pr.count == 0 {
-		pr.count++
-		// Return some data
-		if len(p) > 0 {
-			p[0] = 'x'
-			return 1, nil
-		}
-		return 0, nil
-	}
-	return 0, io.EOF
-}
-
-// mockFile is a file-like object that can fail on Close
-type mockFile struct {
-	*os.File
-	failClose bool
-}
-
-func (mf *mockFile) Close() error {
-	if mf.failClose {
-		return io.ErrUnexpectedEOF
-	}
-	return mf.File.Close()
-}
 
 func TestHashFileConsistency(t *testing.T) {
 	tmpFile := t.TempDir() + "/test.txt"
