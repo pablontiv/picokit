@@ -8,7 +8,7 @@ import (
 )
 
 // specVersion is the coverage-spec version this build implements.
-const specVersion = "v1.0"
+const specVersion = "v1.1"
 
 // buildVersion is set at build time via -ldflags.
 var buildVersion = "dev"

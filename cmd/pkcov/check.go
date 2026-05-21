@@ -93,24 +93,19 @@ func runCheck(cmd *cobra.Command, _ []string) error {
 	w := cmd.OutOrStdout()
 	_, _ = fmt.Fprintln(w, "Coverage Report:")
 	_, _ = fmt.Fprintln(w, "================")
-	for _, pkg := range f.Packages {
-		b, ok := r.PerPackage[pkg]
+	violations := make(map[string]bool, len(r.Violations))
+	for _, v := range r.Violations {
+		violations[v.Package] = true
+	}
+	for _, pkg := range sortedKeys(r.PerPackage) {
+		b := r.PerPackage[pkg]
 		switch {
-		case !ok || b.Skipped:
+		case b.Skipped:
 			_, _ = fmt.Fprintf(w, "SKIP: %s\n", pkg)
+		case violations[pkg]:
+			_, _ = fmt.Fprintf(w, "FAIL: %s = %.1f%%\n", pkg, b.Percent())
 		default:
-			isViolation := false
-			for _, v := range r.Violations {
-				if v.Package == pkg {
-					isViolation = true
-					break
-				}
-			}
-			if isViolation {
-				_, _ = fmt.Fprintf(w, "FAIL: %s = %.1f%%\n", pkg, b.Percent())
-			} else {
-				_, _ = fmt.Fprintf(w, "PASS: %s = %.1f%%\n", pkg, b.Percent())
-			}
+			_, _ = fmt.Fprintf(w, "PASS: %s = %.1f%%\n", pkg, b.Percent())
 		}
 	}
 	_, _ = fmt.Fprintf(w, "\nTOTAL: %.1f%%\n", r.Total)

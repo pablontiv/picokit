@@ -109,8 +109,8 @@ func TestVersionCmd(t *testing.T) {
 	if !strings.Contains(out, "coverage-spec") {
 		t.Errorf("version output missing spec version:\n%s", out)
 	}
-	if !strings.Contains(out, "v1.0") {
-		t.Errorf("version output missing v1.0:\n%s", out)
+	if !strings.Contains(out, "v1.1") {
+		t.Errorf("version output missing v1.1:\n%s", out)
 	}
 }
 
@@ -131,5 +131,89 @@ func TestResolveModuleFlag(t *testing.T) {
 	}
 	if prefix2 != "github.com/foo/bar/" {
 		t.Errorf("got %q, want %q", prefix2, "github.com/foo/bar/")
+	}
+}
+
+// TestCheckV11AutoDiscovery verifies that check with a minimal v1.1 config (no packages)
+// outputs one line per profile package sorted alphabetically.
+func TestCheckV11AutoDiscovery(t *testing.T) {
+	resetFlags()
+
+	dir := t.TempDir()
+	floorsPath := dir + "/floors.toml"
+	if err := os.WriteFile(floorsPath, []byte("default = 85\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	checkProfile = testProfile
+	checkFloors = floorsPath
+	checkModule = testModule
+
+	buf := &bytes.Buffer{}
+	checkCmd.SetOut(buf)
+	if err := checkCmd.RunE(checkCmd, nil); err != nil {
+		t.Fatalf("check: %v", err)
+	}
+	out := buf.String()
+
+	if !strings.Contains(out, "PASS:") {
+		t.Errorf("expected PASS lines in output:\n%s", out)
+	}
+	if strings.Contains(out, "FAIL:") {
+		t.Errorf("unexpected FAIL in output:\n%s", out)
+	}
+	if !strings.Contains(out, "TOTAL:") {
+		t.Errorf("expected TOTAL line in output:\n%s", out)
+	}
+
+	// Output must be sorted: verify each PASS/SKIP line comes after the previous one.
+	var prev string
+	for _, line := range strings.Split(out, "\n") {
+		if !strings.HasPrefix(line, "PASS:") && !strings.HasPrefix(line, "SKIP:") && !strings.HasPrefix(line, "FAIL:") {
+			continue
+		}
+		pkg := strings.Fields(line)[1]
+		if prev != "" && pkg < prev {
+			t.Errorf("output not sorted: %q came after %q", pkg, prev)
+		}
+		prev = pkg
+	}
+}
+
+// TestCheckV11LegacyFloors verifies that a v1.0 floors config (with packages field)
+// loads without error and produces the same output as a minimal v1.1 config.
+func TestCheckV11LegacyFloors(t *testing.T) {
+	resetFlags()
+
+	dir := t.TempDir()
+	legacyPath := dir + "/legacy.toml"
+	legacyContent := "default = 85\npackages = [\"cmd/rootline\", \"internal/derive\"]\n"
+	if err := os.WriteFile(legacyPath, []byte(legacyContent), 0600); err != nil {
+		t.Fatal(err)
+	}
+	minimalPath := dir + "/minimal.toml"
+	if err := os.WriteFile(minimalPath, []byte("default = 85\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	runCheck := func(floors string) string {
+		resetFlags()
+		checkProfile = testProfile
+		checkFloors = floors
+		checkModule = testModule
+		buf := &bytes.Buffer{}
+		checkCmd.SetOut(buf)
+		if err := checkCmd.RunE(checkCmd, nil); err != nil {
+			t.Fatalf("check(%s): %v", floors, err)
+		}
+		return buf.String()
+	}
+
+	outLegacy := runCheck(legacyPath)
+	outMinimal := runCheck(minimalPath)
+
+	if outLegacy != outMinimal {
+		t.Errorf("legacy and minimal configs produced different output\nlegacy:\n%s\nminimal:\n%s",
+			outLegacy, outMinimal)
 	}
 }

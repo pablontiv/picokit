@@ -9,8 +9,12 @@ import (
 
 // Floors holds the coverage policy loaded from .coverage-floors.toml.
 type Floors struct {
-	Default  int      `toml:"default"`
-	Packages []string `toml:"packages"`
+	Default int `toml:"default"`
+	// Deprecated: Packages is accepted for backward compatibility with v1.0 configs
+	// but its content is ignored in v1.1. The gate applies to all packages discovered
+	// in the coverage profile. Use Exclude to opt out specific packages.
+	Packages []string `toml:"packages,omitempty"`
+	Exclude  []string `toml:"exclude,omitempty"`
 }
 
 // LoadFloors parses a .coverage-floors.toml file and validates required fields.
@@ -25,9 +29,6 @@ func LoadFloors(tomlPath string) (*Floors, error) {
 	}
 	if f.Default <= 0 {
 		return nil, fmt.Errorf("floors: default must be a positive integer, got %d", f.Default)
-	}
-	if len(f.Packages) == 0 {
-		return nil, fmt.Errorf("floors: packages list is empty")
 	}
 	return &f, nil
 }
@@ -49,8 +50,9 @@ type Result struct {
 }
 
 // Check evaluates a Profile against Floors and returns a Result.
-// A package listed in floors but absent from the profile is reported in MissingPackages.
-// A package with no source statements (Skipped==true) is reported in SkippedPackages.
+// The gate applies to every package discovered in the coverage profile, except
+// those listed in f.Exclude. Packages with no source statements (Skipped==true)
+// are reported in SkippedPackages.
 func Check(p *Profile, f *Floors) Result {
 	perPkg := p.PerPackage()
 	r := Result{
@@ -60,12 +62,13 @@ func Check(p *Profile, f *Floors) Result {
 
 	threshold := float64(f.Default)
 
-	for _, pkg := range f.Packages {
-		b, ok := perPkg[pkg]
-		if !ok {
-			// Package has no entries in the coverage profile: no source statements.
-			// Matches bash reference behavior (awk total==0 → SKIP).
-			r.SkippedPackages = append(r.SkippedPackages, pkg)
+	excluded := make(map[string]bool, len(f.Exclude))
+	for _, pkg := range f.Exclude {
+		excluded[pkg] = true
+	}
+
+	for pkg, b := range perPkg {
+		if excluded[pkg] {
 			continue
 		}
 		if b.Skipped {

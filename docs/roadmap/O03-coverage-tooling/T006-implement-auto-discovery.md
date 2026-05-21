@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T006: Implementar v1.1 en coverage/ y cmd/pkcov/
