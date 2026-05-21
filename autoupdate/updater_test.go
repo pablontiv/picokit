@@ -667,6 +667,23 @@ func TestIsNewer_Prerelease(t *testing.T) {
 	}
 }
 
+// TestFetchLatestTag_EmptyTagName verifies error when tag_name is missing in response.
+func TestFetchLatestTag_EmptyTagName(t *testing.T) {
+	u := New("pablontiv/testpkg", "testpkg", "TESTPKG_NO_UPDATE")
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = fmt.Fprint(w, `{"tag_name":""}`)
+	}))
+	defer ts.Close()
+
+	u.githubAPI = ts.URL
+	u.httpClient = ts.Client()
+
+	_, err := u.fetchLatestTag()
+	if err == nil {
+		t.Fatal("expected error for empty tag_name")
+	}
+}
+
 // TestParseSemver_EdgeCases verifies edge cases in semver parsing.
 func TestParseSemver_EdgeCases(t *testing.T) {
 	tests := []struct {

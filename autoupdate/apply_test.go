@@ -52,6 +52,15 @@ func TestApply_SkipsIfNotNewer(t *testing.T) {
 	}
 }
 
+// TestFindNewest_NonExistentDir verifies findNewest returns error for missing dir.
+func TestFindNewest_NonExistentDir(t *testing.T) {
+	u := New("pablontiv/testpkg", "testpkg", "TESTPKG_NO_UPDATE")
+	_, _, err := u.findNewest("/nonexistent/path/that/cannot/possibly/exist")
+	if err == nil {
+		t.Fatal("expected error for non-existent staging dir")
+	}
+}
+
 // TestApply_SkipsDevVersion verifies that dev version skips apply.
 func TestApply_SkipsDevVersion(t *testing.T) {
 	u := New("pablontiv/testpkg", "testpkg", "TESTPKG_NO_UPDATE")

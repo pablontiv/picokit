@@ -16,9 +16,15 @@ fmt:
 test:
     go test ./...
 
-# Coverage summary
-coverage-summary:
-    go test -cover ./...
+# Coverage report (per-package table)
+coverage:
+    go test ./... -coverprofile=coverage.out -count=1
+    pkcov report --profile coverage.out --module github.com/pablontiv/picokit
+
+# Coverage gate — exits 1 if any package is below 85%
+coverage-check:
+    go test ./... -coverprofile=coverage.out -count=1
+    pkcov check --profile coverage.out --floors .coverage-floors.toml --module github.com/pablontiv/picokit
 
 # Audit dependencies
 audit:

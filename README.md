@@ -9,6 +9,7 @@ Module path: `github.com/pablontiv/picokit`
 | Package | Description |
 |---------|-------------|
 | `autoupdate` | Parameterized staged async binary updater |
+| `coverage` | Go coverage profile parser and per-package floor checker |
 | `diag` | Diagnostic utilities for system and environment inspection |
 | `diff` | Utilities for computing and comparing differences |
 | `fuzzy` | Fuzzy matching and searching algorithms |
@@ -34,6 +35,32 @@ Then import the packages you need:
 ```go
 import "github.com/pablontiv/picokit/pathsec"
 ```
+
+## Coverage tooling
+
+picokit ships `pkcov`, a CLI that implements [coverage-spec v1.0](docs/coverage-spec.md) — a uniform 85% floor policy across all packages.
+
+```bash
+# Build the tool
+go build -o pkcov ./cmd/pkcov/
+
+# Per-package report
+pkcov report --profile coverage.out --module github.com/pablontiv/picokit
+
+# Gate (exits 1 on violations)
+pkcov check --floors .coverage-floors.toml --module github.com/pablontiv/picokit
+
+# Machine-readable output
+pkcov check --output json ...
+```
+
+Repos that adopt this policy declare compliance in their `CLAUDE.md`:
+
+```
+Coverage policy: complies with github.com/pablontiv/picokit coverage-spec v1.0
+```
+
+See [docs/coverage-spec.md](docs/coverage-spec.md) for the full contract.
 
 ## Contributing
 

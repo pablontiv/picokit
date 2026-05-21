@@ -1,0 +1,12 @@
+default = 85
+
+packages = [
+  "autoupdate",
+  "coverage",
+  "diag",
+  "diff",
+  "fuzzy",
+  "hashfile",
+  "output",
+  "pathsec",
+]

@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Check coverage floors before pushing if any Go source files changed.
+
+while read local_ref local_sha remote_ref remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    range="$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  if git diff --name-only "$range" -- '*.go' 2>/dev/null | grep -q .; then
+    echo "Checking coverage floors..."
+    if ! just coverage-check > /tmp/picokit-cov.log 2>&1; then
+      cat /tmp/picokit-cov.log
+      echo "Coverage below threshold. Run: just coverage-check"
+      exit 1
+    fi
+    echo "Coverage check passed."
+  fi
+done
