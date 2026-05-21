@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Portar el cálculo de coverage de bash a Go en picokit/coverage/
