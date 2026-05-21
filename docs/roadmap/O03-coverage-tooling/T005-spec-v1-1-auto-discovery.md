@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T005: Bump coverage-spec a v1.1 — auto-discovery + exclude

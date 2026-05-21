@@ -38,7 +38,7 @@ import "github.com/pablontiv/picokit/pathsec"
 
 ## Coverage tooling
 
-picokit ships `pkcov`, a CLI that implements [coverage-spec v1.0](docs/coverage-spec.md) — a uniform 85% floor policy across all packages.
+picokit ships `pkcov`, a CLI that implements [coverage-spec v1.1](docs/coverage-spec.md) — a uniform 85% floor policy applied automatically to every package in the module.
 
 ```bash
 # Build the tool
@@ -54,10 +54,17 @@ pkcov check --floors .coverage-floors.toml --module github.com/pablontiv/picokit
 pkcov check --output json ...
 ```
 
+Minimal `.coverage-floors.toml` (v1.1 — no `packages` list needed):
+
+```toml
+default = 85
+# exclude = ["cmd/experimental"]  # optional, with justification
+```
+
 Repos that adopt this policy declare compliance in their `CLAUDE.md`:
 
 ```
-Coverage policy: complies with github.com/pablontiv/picokit coverage-spec v1.0
+Coverage policy: complies with github.com/pablontiv/picokit coverage-spec v1.1
 ```
 
 See [docs/coverage-spec.md](docs/coverage-spec.md) for the full contract.

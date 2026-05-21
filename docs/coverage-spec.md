@@ -1,8 +1,8 @@
 ---
-version: v1.0
+version: v1.1
 ---
 
-# Coverage Policy Spec — v1.0
+# Coverage Policy Spec — v1.1
 
 This document is the authoritative contract for coverage enforcement in `pablontiv` repos.
 It describes **what** the policy enforces; the code (`pkcov`) describes **how**.
@@ -13,15 +13,19 @@ Consumers declare compliance by referencing the version they implement.
 ## 1. Threshold uniforme
 
 A single floor applies uniformly: **85% statement coverage** on the total profile
-and on each listed package individually. No per-package discount or override exists
-in v1.0 — every package is held to the same bar.
+and on every package in the module discovered in the coverage profile. No per-package
+discount or override exists — every package is held to the same bar.
+
+The gate applies automatically to all packages the coverage profile reports. A package
+is only excluded from the gate when explicitly listed in `exclude` (see §3); packages
+absent from `exclude` are always checked.
 
 The threshold is configured per-repo in `.coverage-floors.toml` (see §3).
 Changing the numeric value requires an explicit, conscious decision recorded in that file;
 the default is 85 and should only move upward (see §2).
 
-A run fails if **any** listed package falls below the threshold, even if the aggregate
-total passes.
+A run fails if **any** package in the profile falls below the threshold, even if the
+aggregate total passes.
 
 ---
 
@@ -45,24 +49,23 @@ The configuration file lives at the repo root as `.coverage-floors.toml`.
 ```toml
 default = 85
 
-packages = [
-  "cmd/mytool",
-  "internal/core",
-  "internal/api",
-]
+# exclude = ["cmd/experimental"]  # optional; each entry documents deliberate debt
 ```
 
 Fields:
 
 - `default` (integer, required): statement coverage floor in percent, applied to every
-  listed package and to the aggregate total.
-- `packages` (array of strings, required): relative import path suffixes of the packages
-  to check. The checker resolves these against the module path declared in `go.mod`.
+  package discovered in the coverage profile and to the aggregate total.
+- `packages` (array of strings, **deprecated in v1.1**): accepted by v1.1 implementations
+  for backward compatibility with v1.0 configs, but its content is ignored — the gate
+  applies to all discovered packages regardless. No error is emitted if this field is
+  present. Consumers should delete it when migrating (see §9).
+- `exclude` (array of strings, optional): relative import path suffixes of packages to
+  exempt from the gate. Each exclusion represents deliberate debt; the reason must be
+  recorded in the commit message or as a comment in the TOML file.
 
-There is no per-package override in v1.0. Every package listed shares the single `default`
-floor. Per-package granularity is deferred to a future major version.
-
-Packages absent from the list are not checked — they are invisible to the gate.
+There is no per-package threshold override. Every non-excluded package shares the single
+`default` floor. Per-package granularity is deferred to a future major version.
 
 ---
 
@@ -134,19 +137,25 @@ candidates, but human review is required before deletion.
 A package with no source statements — one that contains only `_test.go` files and
 declares no non-test symbols — is reported as `SKIP`, not `FAIL`.
 
-The checker detects test-only packages by examining the coverage profile: if a package
-appears in `.coverage-floors.toml` but has zero statements in the profile, it is
-skipped. No special annotation is required in the configuration file.
+The checker detects test-only packages automatically by examining the coverage profile:
+a package with zero statements in the profile is skipped without any configuration.
+No annotation in `.coverage-floors.toml` is required or expected for this case.
+
+This automatic detection is the primary mechanism for test-only packages. The `exclude`
+field (§3) is orthogonal: it is reserved for packages that have coverable statements
+but should be exempted from the gate for deliberate reasons — for example, experimental
+CLI scaffolding or generated code that cannot meaningfully be tested. Using `exclude` on
+a test-only package is redundant but harmless.
 
 This rule exists because test-only packages (e.g., end-to-end test suites, fixture
 packages) have no coverable source statements by definition. Penalizing them for 0%
-coverage would be meaningless and would discourage listing them explicitly.
+coverage would be meaningless.
 
 ---
 
 ## 8. Versioning del spec
 
-This document declares its version in YAML frontmatter (`version: v1.0`).
+This document declares its version in YAML frontmatter (`version: v1.1`).
 
 Versioning follows `vMAJOR.MINOR`:
 
@@ -156,12 +165,36 @@ Versioning follows `vMAJOR.MINOR`:
   their behavior or configuration (e.g., introducing per-package overrides, changing
   the threshold semantics, removing a section).
 
+`v1.0 → v1.1` is a **MINOR** bump. Implementations conforming to v1.0 remain compliant:
+the gate semantics are strictly additive (auto-discovery replaces manual listing, `packages`
+is deprecated but still accepted, `exclude` is a new opt-out mechanism). No existing
+`.coverage-floors.toml` breaks on a v1.1 implementation.
+
 Consumers declare compliance by referencing the version they implement, typically in
 their `CLAUDE.md` or `README.md`:
 
 ```
-Coverage policy: complies with github.com/pablontiv/picokit coverage-spec v1.0
+Coverage policy: complies with github.com/pablontiv/picokit coverage-spec v1.1
 ```
 
 A consumer referencing `v1.0` is not required to comply with `v2.0` changes until
 they explicitly upgrade their declaration.
+
+---
+
+## 9. Migration v1.0 → v1.1
+
+Steps to migrate a repo from coverage-spec v1.0 to v1.1:
+
+1. **Delete the `packages` array** from `.coverage-floors.toml`. The gate now applies
+   automatically to all packages discovered in the coverage profile — no list is needed.
+2. **Add `exclude` entries** for any package that should be exempted from the gate,
+   with a justification comment:
+   ```toml
+   default = 85
+   exclude = [
+     "cmd/experimental",  # scaffolding, not yet tested
+   ]
+   ```
+3. **Update the compliance declaration** in `CLAUDE.md` or `README.md` from `v1.0` to `v1.1`.
+4. Run `pkcov check` locally to confirm the gate applies to all expected packages.

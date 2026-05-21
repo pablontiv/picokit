@@ -2,7 +2,6 @@ done_statuses = ["Completed", "Obsolete"]
 active_statuses = ["Pending", "Specified", "In Progress"]
 leaf_filter = "isIndex == false"
 outcome_close_verify = []
-pr_merge_strategy = "squash"
 commit_style = "conventional"
 auto_push = true
 required_code_coverage = 85.0
@@ -11,6 +10,11 @@ parallel = true
 autonomy = "until_done"
 compact_after_task_commit = true
 pr_mode = false
+
+[gitflow]
+branch_style = "feat|fix|chore|docs/<OXX>-<slug>"
+pr_title_style = "<type>(<scope>): <description>"
+pr_body_style = "no aplica (pr_mode=false)"
 
 [status_values]
 pending = "Pending"
