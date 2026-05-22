@@ -3,7 +3,6 @@
 package autoupdate
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 )
