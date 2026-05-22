@@ -16,6 +16,20 @@ import (
 	"testing"
 )
 
+func TestNew_OmitsEnvDisable_NoOptOut(t *testing.T) {
+	u := New("pablontiv/testpkg", "testpkg")
+	if u.EnvDisable != "" {
+		t.Fatalf("EnvDisable = %q, want empty", u.EnvDisable)
+	}
+	// FetchAndStage must NOT short-circuit via env when EnvDisable is "".
+	// os.Getenv("") always returns "" which != "1", so the env check never fires.
+	// We confirm no network call is made for version=="dev".
+	u.httpClient = &http.Client{Transport: failTransport{t}}
+	if err := u.FetchAndStage("dev"); err != nil {
+		t.Fatalf("FetchAndStage(dev) = %v, want nil", err)
+	}
+}
+
 func TestFetchAndStage_SkipsDevVersion(t *testing.T) {
 	// No network call must be made; httpClient is patched to fail if called.
 	u := New("pablontiv/testpkg", "testpkg", "TESTPKG_NO_UPDATE")

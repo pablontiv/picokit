@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T002: Hacer `envDisable` opcional en `autoupdate.New` vía variadic

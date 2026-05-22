@@ -27,7 +27,7 @@ import (
 type Updater struct {
 	Repo       string // e.g. "pablontiv/roadmapctl"
 	Binary     string // e.g. "roadmapctl"
-	EnvDisable string // e.g. "ROADMAPCTL_NO_UPDATE"
+	EnvDisable string // env var name that disables updates when set to "1"; "" means no env opt-out
 
 	// CurrentVersion is the running binary version. Set by caller before
 	// invoking ApplyStagedIfAvailable.
@@ -44,12 +44,17 @@ type Updater struct {
 	githubDLBase string
 }
 
-// New creates a new Updater with the given repo, binary name, and no-update env var.
-func New(repo, binary, envDisable string) *Updater {
+// New creates a new Updater. envDisable is optional; if omitted or empty,
+// no environment variable can disable the updater (only version=="dev" does).
+func New(repo, binary string, envDisable ...string) *Updater {
+	env := ""
+	if len(envDisable) > 0 {
+		env = envDisable[0]
+	}
 	return &Updater{
 		Repo:         repo,
 		Binary:       binary,
-		EnvDisable:   envDisable,
+		EnvDisable:   env,
 		httpClient:   &http.Client{Timeout: 60 * time.Second},
 		githubAPI:    "https://api.github.com/repos/" + repo + "/releases/latest",
 		githubDLBase: "https://github.com/" + repo + "/releases/download/",

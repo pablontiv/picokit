@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T001: Fix build Windows — quitar import muerto `"fmt"` de `autoupdate/exec_windows.go`
