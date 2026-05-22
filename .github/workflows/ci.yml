@@ -20,12 +20,22 @@ jobs:
   gitleaks:
     uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v1
 
+  coverage-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - run: go test ./... -coverprofile=coverage.out -count=1
+      - run: go run ./cmd/pkcov check --profile coverage.out --floors .coverage-floors.toml
+
   release:
     uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v1
-    needs: [ci, gitleaks]
+    needs: [ci, gitleaks, coverage-gate]
     if: github.event_name == 'push'
     with:
-      quality-gate-jobs: '["ci","gitleaks"]'
+      quality-gate-jobs: '["ci","gitleaks","coverage-gate"]'
     permissions:
       contents: write
       id-token: write

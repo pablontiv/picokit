@@ -43,6 +43,11 @@ func runCheck(cmd *cobra.Command, _ []string) error {
 
 	r := coverage.Check(p, f)
 
+	excluded := make(map[string]bool, len(f.Exclude))
+	for _, pkg := range f.Exclude {
+		excluded[pkg] = true
+	}
+
 	if outputFormat == "json" {
 		type violation struct {
 			Package string  `json:"package"`
@@ -60,16 +65,24 @@ func runCheck(cmd *cobra.Command, _ []string) error {
 			PerPackage map[string]pkgEntry `json:"per_package"`
 			Violations []violation         `json:"violations"`
 			Skipped    []string            `json:"skipped"`
+			Excluded   []string            `json:"excluded"`
 		}{
 			Total:      r.Total,
 			PerPackage: make(map[string]pkgEntry, len(r.PerPackage)),
 			Violations: make([]violation, 0, len(r.Violations)),
 			Skipped:    r.SkippedPackages,
+			Excluded:   f.Exclude,
 		}
 		if out.Skipped == nil {
 			out.Skipped = []string{}
 		}
+		if out.Excluded == nil {
+			out.Excluded = []string{}
+		}
 		for k, b := range r.PerPackage {
+			if excluded[k] {
+				continue
+			}
 			out.PerPackage[k] = pkgEntry{
 				Covered: b.Covered,
 				Total:   b.Total,
@@ -98,6 +111,9 @@ func runCheck(cmd *cobra.Command, _ []string) error {
 		violations[v.Package] = true
 	}
 	for _, pkg := range sortedKeys(r.PerPackage) {
+		if excluded[pkg] {
+			continue
+		}
 		b := r.PerPackage[pkg]
 		switch {
 		case b.Skipped:

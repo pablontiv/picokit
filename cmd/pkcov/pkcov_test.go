@@ -93,7 +93,7 @@ func TestCheckJSON(t *testing.T) {
 	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
 		t.Fatalf("json unmarshal: %v\noutput: %s", err, buf.String())
 	}
-	for _, field := range []string{"total", "per_package", "violations", "skipped"} {
+	for _, field := range []string{"total", "per_package", "violations", "skipped", "excluded"} {
 		if _, ok := result[field]; !ok {
 			t.Errorf("JSON missing field %q", field)
 		}

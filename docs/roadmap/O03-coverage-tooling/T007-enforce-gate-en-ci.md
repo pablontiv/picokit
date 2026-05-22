@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T007: Cerrar enforcement loop — go.mod tidy + Justfile go run + CI coverage-gate
