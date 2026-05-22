@@ -1,0 +1,3 @@
+mode: set
+github.com/pablontiv/picokit/real/file.go:1.1,5.2 5 5
+github.com/pablontiv/picokit/testpkg/file.go:1.1,2.1 0 0

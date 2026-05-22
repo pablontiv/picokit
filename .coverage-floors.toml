@@ -1,7 +1,4 @@
 default = 85
 
-# v1.1: el gate aplica a todos los paquetes del módulo descubiertos en el profile.
-# cmd/pkcov está temporalmente excluido (70.5% < 85). T008 cierra esta deuda.
-exclude = [
-  "cmd/pkcov",
-]
+# exclude se reserva para casos excepcionales (scaffolding, código generado).
+# Actualmente no hay paquetes excluidos.

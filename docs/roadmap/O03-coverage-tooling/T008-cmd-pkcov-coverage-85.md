@@ -1,5 +1,5 @@
 ---
-estado: Specified
+estado: Completed
 tipo: task
 ---
 # T008: Subir cobertura de cmd/pkcov a ≥85% y eliminar de exclude
