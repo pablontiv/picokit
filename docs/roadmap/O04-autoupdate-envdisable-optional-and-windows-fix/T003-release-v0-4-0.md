@@ -1,5 +1,5 @@
 ---
-estado: In Progress
+estado: Completed
 tipo: task
 ---
 # T003: Release v0.4.0 — CHANGELOG + tag
