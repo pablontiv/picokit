@@ -290,9 +290,9 @@ func TestSummarizeStatus(t *testing.T) {
 		wantInfos   int
 	}{
 		{
-			name:       "empty",
+			name:        "empty",
 			diagnostics: nil,
-			wantStatus: SummaryStatusOK,
+			wantStatus:  SummaryStatusOK,
 		},
 		{
 			name: "info only",

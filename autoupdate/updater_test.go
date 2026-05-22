@@ -669,9 +669,9 @@ func TestIsNewer_Prerelease(t *testing.T) {
 		current   string
 		want      bool
 	}{
-		{"v1.0.0-rc1", "v0.9.0", true},   // 1.0.0 > 0.9.0 (pre-release stripped)
+		{"v1.0.0-rc1", "v0.9.0", true},         // 1.0.0 > 0.9.0 (pre-release stripped)
 		{"v1.0.0-alpha", "v1.0.0-beta", false}, // both become 1.0.0 (equal)
-		{"v2.0.0", "v1.0.0-rc1", true},   // 2.0.0 > 1.0.0
+		{"v2.0.0", "v1.0.0-rc1", true},         // 2.0.0 > 1.0.0
 	}
 	for _, tt := range tests {
 		got := isNewer(tt.candidate, tt.current)

@@ -212,9 +212,9 @@ func TestWriteLinesRobot(t *testing.T) {
 
 func TestTokenCount(t *testing.T) {
 	tests := []struct {
-		name     string
-		text     string
-		expected int
+		name      string
+		text      string
+		expected  int
 		tolerance int
 	}{
 		{

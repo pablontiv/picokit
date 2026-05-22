@@ -251,7 +251,6 @@ type nopWriteCloser struct{ buf *bytes.Buffer }
 func (w *nopWriteCloser) Write(p []byte) (int, error) { return w.buf.Write(p) }
 func (w *nopWriteCloser) Close() error                { return nil }
 
-
 func TestHashFileConsistency(t *testing.T) {
 	tmpFile := t.TempDir() + "/test.txt"
 	content := "consistent hash test"
