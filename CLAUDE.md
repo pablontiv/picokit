@@ -14,6 +14,7 @@ _(populated by T002–T005)_
 - Tests live alongside the code (`_test.go` files in the same package).
 - Coverage threshold: 85%.
 - CI delegates to `pablontiv/crossbeam@v1` (go-ci, gitleaks, go-release, codeql, scorecard).
+- CI exception: the `coverage-gate` job runs this repo's own `pkcov` directly (dogfooding) instead of delegating to crossbeam.
 
 ## Local commands
 
