@@ -2,8 +2,6 @@ package coverage
 
 import (
 	"fmt"
-
-	"github.com/pelletier/go-toml/v2"
 	"os"
 )
 
@@ -23,14 +21,14 @@ func LoadFloors(tomlPath string) (*Floors, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read floors: %w", err)
 	}
-	var f Floors
-	if err := toml.Unmarshal(data, &f); err != nil {
+	f, err := parseFloorsTOML(data)
+	if err != nil {
 		return nil, fmt.Errorf("parse floors: %w", err)
 	}
 	if f.Default <= 0 {
 		return nil, fmt.Errorf("floors: default must be a positive integer, got %d", f.Default)
 	}
-	return &f, nil
+	return f, nil
 }
 
 // Violation records a package that fell below the required threshold.
