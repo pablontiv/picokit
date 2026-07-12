@@ -360,3 +360,168 @@ func TestCheckTextSkipped(t *testing.T) {
 		t.Errorf("expected PASS line for real:\n%s", out)
 	}
 }
+
+// TestCheckCmdFlagError verifies that check command handles flag parse errors.
+func TestCheckCmdFlagError(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := runCheckCmd([]string{"--unknown-flag"}, stdout, stderr)
+	if code != 2 {
+		t.Errorf("runCheckCmd with bad flag = %d, want 2", code)
+	}
+	if stderr.String() == "" {
+		t.Error("expected stderr output for flag error")
+	}
+}
+
+// TestCheckCmdRunError verifies that check command propagates runCheck errors to stderr.
+func TestCheckCmdRunError(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := runCheckCmd([]string{"--profile", "nonexistent.out", "--floors", testFloors, "--module", testModule}, stdout, stderr)
+	if code != 1 {
+		t.Errorf("runCheckCmd with bad profile = %d, want 1", code)
+	}
+	errOut := stderr.String()
+	if !strings.Contains(errOut, "parse profile") {
+		t.Errorf("stderr missing 'parse profile' error:\n%s", errOut)
+	}
+}
+
+// TestCheckJSONViolations verifies that check returns exit code 1 when JSON output has violations.
+func TestCheckJSONViolations(t *testing.T) {
+	dir := t.TempDir()
+	floorsPath := dir + "/floors.toml"
+	// Set floors impossibly high to force violations.
+	if err := os.WriteFile(floorsPath, []byte("default = 99\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	buf, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
+	code, err := runCheck(checkOptions{profile: testProfile, floors: floorsPath, module: testModule, output: "json"}, buf, errBuf)
+	if err != nil {
+		t.Fatalf("runCheck: %v", err)
+	}
+	if code != 1 {
+		t.Errorf("runCheck with high floors = %d, want 1", code)
+	}
+
+	var result struct {
+		Total      float64 `json:"total"`
+		Violations []struct {
+			Package string  `json:"package"`
+			Got     float64 `json:"got"`
+			Need    float64 `json:"need"`
+		} `json:"violations"`
+	}
+	if err := json.Unmarshal(buf.Bytes(), &result); err != nil {
+		t.Fatalf("json unmarshal: %v", err)
+	}
+	if len(result.Violations) == 0 {
+		t.Error("expected violations in JSON output")
+	}
+}
+
+// TestReportCmdViaDispatch verifies that report command works via run() dispatch.
+func TestReportCmdViaDispatch(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run([]string{"report", "--profile", testProfile, "--module", testModule}, stdout, stderr)
+	if code != 0 {
+		t.Errorf("run report = %d, want 0; stderr:\n%s", code, stderr.String())
+	}
+	out := stdout.String()
+	if !strings.Contains(out, "PASS:") {
+		t.Errorf("report output missing PASS lines:\n%s", out)
+	}
+}
+
+// TestReportCmdFlagError verifies that report command handles flag parse errors.
+func TestReportCmdFlagError(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := runReportCmd([]string{"--unknown-flag"}, stdout, stderr)
+	if code != 2 {
+		t.Errorf("runReportCmd with bad flag = %d, want 2", code)
+	}
+	if stderr.String() == "" {
+		t.Error("expected stderr output for flag error")
+	}
+}
+
+// TestReportCmdRunError verifies that report command propagates runReport errors to stderr.
+func TestReportCmdRunError(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := runReportCmd([]string{"--profile", "nonexistent.out", "--module", testModule}, stdout, stderr)
+	if code != 1 {
+		t.Errorf("runReportCmd with bad profile = %d, want 1", code)
+	}
+	errOut := stderr.String()
+	if !strings.Contains(errOut, "parse profile") {
+		t.Errorf("stderr missing 'parse profile' error:\n%s", errOut)
+	}
+}
+
+// TestReportCmdJSONViaDispatch verifies that report JSON output works via dispatch.
+func TestReportCmdJSONViaDispatch(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run([]string{"report", "--profile", testProfile, "--module", testModule, "--output", "json"}, stdout, stderr)
+	if code != 0 {
+		t.Errorf("run report json = %d, want 0; stderr:\n%s", code, stderr.String())
+	}
+
+	var result map[string]any
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("json unmarshal: %v\noutput: %s", err, stdout.String())
+	}
+	if _, ok := result["total"]; !ok {
+		t.Error("JSON missing field 'total'")
+	}
+	if _, ok := result["per_package"]; !ok {
+		t.Error("JSON missing field 'per_package'")
+	}
+}
+
+// TestCheckCmdJSONViaDispatch verifies that check JSON output works via dispatch.
+func TestCheckCmdJSONViaDispatch(t *testing.T) {
+	stdout, stderr := &bytes.Buffer{}, &bytes.Buffer{}
+	code := run([]string{"check", "--profile", testProfile, "--floors", testFloors, "--module", testModule, "--output", "json"}, stdout, stderr)
+	if code != 0 {
+		t.Errorf("run check json = %d, want 0; stderr:\n%s", code, stderr.String())
+	}
+
+	var result struct {
+		Total float64 `json:"total"`
+	}
+	if err := json.Unmarshal(stdout.Bytes(), &result); err != nil {
+		t.Fatalf("json unmarshal: %v", err)
+	}
+	if result.Total <= 0 {
+		t.Errorf("total = %v, want > 0", result.Total)
+	}
+}
+
+// TestCheckTextViolations verifies that check text output shows FAIL and errors for violations.
+func TestCheckTextViolations(t *testing.T) {
+	dir := t.TempDir()
+	floorsPath := dir + "/floors.toml"
+	// Set floors impossibly high to force violations.
+	if err := os.WriteFile(floorsPath, []byte("default = 99\n"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	buf, errBuf := &bytes.Buffer{}, &bytes.Buffer{}
+	code, err := runCheck(checkOptions{profile: testProfile, floors: floorsPath, module: testModule, output: "text"}, buf, errBuf)
+	if err != nil {
+		t.Fatalf("runCheck: %v", err)
+	}
+	if code != 1 {
+		t.Errorf("runCheck with high floors = %d, want 1", code)
+	}
+
+	out := buf.String()
+	if !strings.Contains(out, "FAIL:") {
+		t.Errorf("text output missing FAIL lines:\n%s", out)
+	}
+
+	errOut := errBuf.String()
+	if !strings.Contains(errOut, "ERROR: Coverage floors not met") {
+		t.Errorf("stderr missing error message:\n%s", errOut)
+	}
+}
