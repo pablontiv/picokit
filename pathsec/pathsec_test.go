@@ -270,13 +270,20 @@ func TestEvalExistingPrefixRealPath(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// evalExistingPrefix resolves symlinks, so the expectation must be
+	// canonicalized too (macOS TMPDIR lives under the /var -> /private/var symlink).
+	want, err := filepath.EvalSymlinks(realDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// Test with path that exists
 	result, err := evalExistingPrefix(realDir)
 	if err != nil {
 		t.Fatalf("evalExistingPrefix error = %v", err)
 	}
-	if result != realDir {
-		t.Fatalf("result = %q, want %q", result, realDir)
+	if result != want {
+		t.Fatalf("result = %q, want %q", result, want)
 	}
 }
 
