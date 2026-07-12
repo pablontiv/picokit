@@ -2,36 +2,45 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
-	"os"
+	"io"
 	"sort"
 
 	"github.com/pablontiv/picokit/coverage"
-	"github.com/spf13/cobra"
 )
 
-var reportCmd = &cobra.Command{
-	Use:   "report",
-	Short: "Print per-package coverage table",
-	RunE:  runReport,
+type reportOptions struct {
+	profile string
+	module  string
+	output  string
 }
 
-var reportProfile string
-var reportModule string
-
-func init() {
-	reportCmd.Flags().StringVar(&reportProfile, "profile", "coverage.out", "path to coverage profile")
-	reportCmd.Flags().StringVar(&reportModule, "module", "", "module prefix (auto-detected from go.mod if empty)")
-	rootCmd.AddCommand(reportCmd)
+func runReportCmd(args []string, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("report", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	opts := reportOptions{}
+	fs.StringVar(&opts.profile, "profile", "coverage.out", "path to coverage profile")
+	fs.StringVar(&opts.module, "module", "", "module prefix (auto-detected from go.mod if empty)")
+	out := addOutputFlag(fs)
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	opts.output = *out
+	if err := runReport(opts, stdout); err != nil {
+		fmt.Fprintln(stderr, err)
+		return 1
+	}
+	return 0
 }
 
-func runReport(cmd *cobra.Command, _ []string) error {
-	prefix, err := resolveModule(reportModule)
+func runReport(opts reportOptions, stdout io.Writer) error {
+	prefix, err := resolveModule(opts.module)
 	if err != nil {
 		return err
 	}
 
-	p, err := coverage.ParseProfile(reportProfile, prefix)
+	p, err := coverage.ParseProfile(opts.profile, prefix)
 	if err != nil {
 		return fmt.Errorf("parse profile: %w", err)
 	}
@@ -39,14 +48,14 @@ func runReport(cmd *cobra.Command, _ []string) error {
 	perPkg := p.PerPackage()
 	pkgs := sortedKeys(perPkg)
 
-	if outputFormat == "json" {
+	if opts.output == "json" {
 		type pkgEntry struct {
 			Covered int     `json:"covered"`
 			Total   int     `json:"total"`
 			Skipped bool    `json:"skipped"`
 			Percent float64 `json:"percent"`
 		}
-		out := struct {
+		jsonOut := struct {
 			Total      float64             `json:"total"`
 			PerPackage map[string]pkgEntry `json:"per_package"`
 		}{
@@ -54,17 +63,17 @@ func runReport(cmd *cobra.Command, _ []string) error {
 			PerPackage: make(map[string]pkgEntry, len(perPkg)),
 		}
 		for k, b := range perPkg {
-			out.PerPackage[k] = pkgEntry{
+			jsonOut.PerPackage[k] = pkgEntry{
 				Covered: b.Covered,
 				Total:   b.Total,
 				Skipped: b.Skipped,
 				Percent: b.Percent(),
 			}
 		}
-		return json.NewEncoder(os.Stdout).Encode(out)
+		return json.NewEncoder(stdout).Encode(jsonOut)
 	}
 
-	out := cmd.OutOrStdout()
+	out := stdout
 	_, _ = fmt.Fprintln(out, "Coverage Report:")
 	_, _ = fmt.Fprintln(out, "================")
 	for _, pkg := range pkgs {
