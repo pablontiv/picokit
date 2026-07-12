@@ -77,6 +77,26 @@ func TestParseFloorsTOML(t *testing.T) {
 			input:   "default 85\n",
 			wantErr: "line 1",
 		},
+		{
+			name:    "multi-line array rejected",
+			input:   "default = 85\nexclude = [\n\"pkg/a\",\n]\n",
+			wantErr: "line 2",
+		},
+		{
+			name:    "single-quoted string rejected",
+			input:   "default = 85\nexclude = ['pkg/a']\n",
+			wantErr: "line 2",
+		},
+		{
+			name:    "unicode escape rejected",
+			input:   "default = 85\nexclude = [\"\\u0041\"]\n",
+			wantErr: "line 2",
+		},
+		{
+			name:    "multi-line basic string rejected",
+			input:   "default = 85\nexclude = [\"\"\"a\"\"\"]\n",
+			wantErr: "line 2",
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
