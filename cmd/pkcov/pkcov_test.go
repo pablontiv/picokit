@@ -98,6 +98,27 @@ func TestRunDispatch(t *testing.T) {
 	}
 }
 
+func TestResolveModule(t *testing.T) {
+	tests := []struct {
+		in   string
+		want string
+	}{
+		{"github.com/foo/bar", "github.com/foo/bar/"},
+		{"github.com/foo/bar/", "github.com/foo/bar/"},
+	}
+	for _, tc := range tests {
+		t.Run(tc.in, func(t *testing.T) {
+			got, err := resolveModule(tc.in)
+			if err != nil {
+				t.Fatalf("resolveModule(%q): %v", tc.in, err)
+			}
+			if got != tc.want {
+				t.Errorf("resolveModule(%q) = %q, want %q", tc.in, got, tc.want)
+			}
+		})
+	}
+}
+
 // TestCheckV11AutoDiscovery verifies that check with a minimal v1.1 config (no packages)
 // outputs one line per profile package sorted alphabetically.
 func TestCheckV11AutoDiscovery(t *testing.T) {
