@@ -75,7 +75,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup and workflow.
 
 ## License
 
-picokit is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). See [LICENSE](LICENSE) for terms.
+picokit is licensed under the [Apache License 2.0](LICENSE). See [LICENSE](LICENSE) for terms.
 
 ## Code of Conduct
 
