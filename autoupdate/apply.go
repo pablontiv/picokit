@@ -13,8 +13,10 @@ type ExecFn func(path string) error
 
 // ApplyStagedIfAvailable detects the newest staged binary, and if it is newer
 // than CurrentVersion, atomically replaces the running binary and re-execs.
-// All errors (permissions, filesystem) are swallowed silently — the function
-// never interrupts the current command.
+// If VersionPolicy rejects the staged release, ApplyStagedIfAvailable returns
+// an *UpdateWithheldError and retains the staged binary. All other errors
+// (permissions, filesystem) are swallowed silently, so they never interrupt
+// the current command.
 func (u *Updater) ApplyStagedIfAvailable() error {
 	if u.CurrentVersion == "dev" {
 		return nil
@@ -34,13 +36,20 @@ func (u *Updater) ApplyStagedIfAvailable() error {
 	if !isNewer(newestTag, u.CurrentVersion) {
 		return nil
 	}
+	if err := u.checkVersionPolicy(u.CurrentVersion, newestTag); err != nil {
+		return err
+	}
 
 	currentBin, err := os.Executable()
 	if err != nil {
 		return nil
 	}
 
-	if err := atomicReplace(currentBin, newestBin); err != nil {
+	replaceFn := u.replaceFn
+	if replaceFn == nil {
+		replaceFn = atomicReplace
+	}
+	if err := replaceFn(currentBin, newestBin); err != nil {
 		return nil
 	}
 

@@ -7,6 +7,7 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -223,6 +224,93 @@ func TestIsNewer(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("isNewer(%q, %q) = %v; want %v", tt.candidate, tt.current, got, tt.want)
 		}
+	}
+}
+
+func TestSameMajorOnly(t *testing.T) {
+	tests := []struct {
+		name      string
+		current   string
+		candidate string
+		want      bool
+	}{
+		{name: "same major minor update", current: "v1.2.3", candidate: "v1.3.0", want: true},
+		{name: "cross major update", current: "v1.9.9", candidate: "v2.0.0", want: false},
+		{name: "prerelease and build metadata", current: "v1.2.3+old", candidate: "v1.3.0-rc.1+new", want: true},
+		{name: "zero major patch update", current: "v0.2.1", candidate: "v0.2.2", want: true},
+		{name: "zero major minor update", current: "v0.2.1", candidate: "v0.3.0", want: false},
+		{name: "invalid current version", current: "invalid", candidate: "v1.2.3", want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := SameMajorOnly(tt.current, tt.candidate); got != tt.want {
+				t.Fatalf("SameMajorOnly(%q, %q) = %v, want %v", tt.current, tt.candidate, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestFetchAndStage_SameMajorPolicyAllowsSameMajor(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	u := New("pablontiv/testpkg", "testpkg-policy-fetch-allowed")
+	u.VersionPolicy = SameMajorOnly
+	tag := "v1.3.0-rc.1+build.7"
+	stageDir, err := u.stagingDir(tag)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stagedBin := filepath.Join(stageDir, u.binaryName())
+	if err := os.WriteFile(stagedBin, []byte("already-staged"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	ts := newFakeGitHubServer(t, u, tag, nil, "")
+	defer ts.Close()
+	u.httpClient = ts.Client()
+	u.githubAPI = ts.URL + fmt.Sprintf("/repos/%s/releases/latest", u.Repo)
+
+	if err := u.FetchAndStage("v1.2.3+build.1"); err != nil {
+		t.Fatalf("FetchAndStage() = %v, want nil", err)
+	}
+}
+
+func TestFetchAndStage_SameMajorPolicyWithholdsBeforeDownload(t *testing.T) {
+	u := New("pablontiv/testpkg", "testpkg-policy-fetch-withheld")
+	u.VersionPolicy = SameMajorOnly
+
+	assetRequested := false
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == fmt.Sprintf("/repos/%s/releases/latest", u.Repo) {
+			_, _ = fmt.Fprint(w, `{"tag_name":"v2.0.0"}`)
+			return
+		}
+		assetRequested = true
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer ts.Close()
+	u.httpClient = ts.Client()
+	u.githubAPI = ts.URL + fmt.Sprintf("/repos/%s/releases/latest", u.Repo)
+	u.githubDLBase = ts.URL + "/"
+
+	err := u.FetchAndStage("v1.9.9")
+	assertUpdateWithheld(t, err, "v1.9.9", "v2.0.0")
+	if assetRequested {
+		t.Fatal("policy must be checked before release assets are downloaded")
+	}
+}
+
+func assertUpdateWithheld(t *testing.T, err error, current, candidate string) {
+	t.Helper()
+	var withheld *UpdateWithheldError
+	if !errors.As(err, &withheld) {
+		t.Fatalf("error = %v, want *UpdateWithheldError", err)
+	}
+	if withheld.CurrentVersion != current || withheld.CandidateVersion != candidate {
+		t.Fatalf("withheld versions = (%q, %q), want (%q, %q)",
+			withheld.CurrentVersion, withheld.CandidateVersion, current, candidate)
 	}
 }
 

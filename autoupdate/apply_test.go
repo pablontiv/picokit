@@ -1,6 +1,7 @@
 package autoupdate
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -68,6 +69,77 @@ func TestApply_SkipsDevVersion(t *testing.T) {
 
 	if err := u.ApplyStagedIfAvailable(); err != nil {
 		t.Fatalf("dev version: ApplyStagedIfAvailable() = %v, want nil", err)
+	}
+}
+
+func TestApply_SameMajorPolicyWithholdsPreexistingCrossMajorStage(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	u := New("pablontiv/testpkg", "testpkg-policy-apply-withheld")
+	u.CurrentVersion = "v1.9.9"
+	u.VersionPolicy = SameMajorOnly
+	stageDir, err := u.stagingDir("v2.0.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stagedBin := filepath.Join(stageDir, u.binaryName())
+	if err := os.WriteFile(stagedBin, []byte("cross-major"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	u.replaceFn = func(_, _ string) error {
+		t.Fatal("withheld staged binary must not replace the current executable")
+		return nil
+	}
+	u.execFn = func(_ string) error {
+		t.Fatal("withheld staged binary must not be executed")
+		return nil
+	}
+
+	err = u.ApplyStagedIfAvailable()
+	var withheld *UpdateWithheldError
+	if !errors.As(err, &withheld) {
+		t.Fatalf("error = %v, want *UpdateWithheldError", err)
+	}
+	if withheld.CurrentVersion != "v1.9.9" || withheld.CandidateVersion != "v2.0.0" {
+		t.Fatalf("withheld versions = (%q, %q), want (%q, %q)",
+			withheld.CurrentVersion, withheld.CandidateVersion, "v1.9.9", "v2.0.0")
+	}
+	if _, err := os.Stat(stagedBin); err != nil {
+		t.Fatalf("withheld staged binary must be retained: %v", err)
+	}
+}
+
+func TestApply_SameMajorPolicyAllowsSameMajorStage(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	t.Setenv("XDG_CACHE_HOME", t.TempDir())
+
+	u := New("pablontiv/testpkg", "testpkg-policy-apply-allowed")
+	u.CurrentVersion = "v1.2.3+build.1"
+	u.VersionPolicy = SameMajorOnly
+	stageDir, err := u.stagingDir("v1.3.0-rc.1+build.7")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stagedBin := filepath.Join(stageDir, u.binaryName())
+	if err := os.WriteFile(stagedBin, []byte("same-major"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	replaceCalled := false
+	u.replaceFn = func(_, src string) error {
+		replaceCalled = true
+		if src != stagedBin {
+			t.Fatalf("replacement source = %q, want %q", src, stagedBin)
+		}
+		return errors.New("stop before replacing the test executable")
+	}
+
+	if err := u.ApplyStagedIfAvailable(); err != nil {
+		t.Fatalf("ApplyStagedIfAvailable() = %v, want nil", err)
+	}
+	if !replaceCalled {
+		t.Fatal("same-major staged binary must reach replacement")
 	}
 }
 

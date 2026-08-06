@@ -8,7 +8,7 @@ Module path: `github.com/pablontiv/picokit`
 
 | Package | Description |
 |---------|-------------|
-| `autoupdate` | Parameterized staged async binary updater |
+| `autoupdate` | Parameterized staged async binary updater with opt-in version policies |
 | `coverage` | Go coverage profile parser and per-package floor checker |
 | `diag` | Diagnostic utilities for system and environment inspection |
 | `diff` | Utilities for computing and comparing differences |
@@ -35,6 +35,26 @@ Then import the packages you need:
 ```go
 import "github.com/pablontiv/picokit/pathsec"
 ```
+
+## Autoupdate version policies
+
+By default, `autoupdate` preserves its original behavior: it stages and applies
+any newer release, including a new major version. Opt into compatibility-aware
+automatic updates by assigning `SameMajorOnly`:
+
+```go
+updater := autoupdate.New("owner/repository", "binary")
+updater.VersionPolicy = autoupdate.SameMajorOnly
+```
+
+The policy is checked before release assets are downloaded and again before an
+already-staged binary is applied. A withheld update returns an
+`*autoupdate.UpdateWithheldError`, whose `CurrentVersion` and `CandidateVersion`
+fields let the application explain the required migration to the user.
+
+For stable versions, `SameMajorOnly` permits newer versions with the same major
+version. For `v0.x`, Semantic Versioning allows breaking changes in each minor
+version, so the policy permits patch updates only within the same minor version.
 
 ## Coverage tooling
 

@@ -22,6 +22,37 @@ import (
 	"github.com/pablontiv/picokit/hashfile"
 )
 
+// VersionPolicy decides whether an automatic update from currentVersion to
+// candidateVersion is allowed. Updater calls a configured policy only for a
+// candidate that is newer than the current version.
+type VersionPolicy func(currentVersion, candidateVersion string) bool
+
+// UpdateWithheldError reports an update rejected by a VersionPolicy. Consumers
+// can use errors.As to inspect the current and candidate versions and explain
+// the withheld update to the user.
+type UpdateWithheldError struct {
+	CurrentVersion   string
+	CandidateVersion string
+}
+
+// Error implements the error interface.
+func (e *UpdateWithheldError) Error() string {
+	return fmt.Sprintf("update from %s to %s withheld by version policy", e.CurrentVersion, e.CandidateVersion)
+}
+
+// SameMajorOnly allows automatic updates within the current compatibility
+// boundary. For stable versions, that means the major version must match. For
+// v0.x versions, whose minor versions may contain breaking changes under
+// Semantic Versioning, both the major and minor versions must match.
+func SameMajorOnly(currentVersion, candidateVersion string) bool {
+	current, currentOK := parseSemver(currentVersion)
+	candidate, candidateOK := parseSemver(candidateVersion)
+	if !currentOK || !candidateOK || current[0] != candidate[0] {
+		return false
+	}
+	return current[0] != 0 || current[1] == candidate[1]
+}
+
 // Updater is a parameterized async binary updater. Each application creates
 // an instance with its own repo, binary name, and no-update environment variable.
 type Updater struct {
@@ -32,9 +63,15 @@ type Updater struct {
 	// CurrentVersion is the running binary version. Set by caller before
 	// invoking ApplyStagedIfAvailable.
 	CurrentVersion string
+	// VersionPolicy optionally restricts which newer versions may be staged or
+	// applied. Nil preserves the default behavior of allowing updates across
+	// major versions.
+	VersionPolicy VersionPolicy
 
 	// execFn is the platform-specific execution function. Overridable in tests.
 	execFn ExecFn
+	// replaceFn atomically replaces the running binary. Overridable in tests.
+	replaceFn func(dest, src string) error
 
 	// HTTP client for downloads; initialized to default in New, overridable in tests.
 	httpClient *http.Client
@@ -64,7 +101,9 @@ func New(repo, binary string, envDisable ...string) *Updater {
 // FetchAndStage downloads the latest release into a staging directory without
 // interrupting the current command. It returns nil silently on network errors;
 // a SHA256 mismatch is returned as an error because it signals a data integrity
-// problem. No files are written on error.
+// problem. If VersionPolicy rejects the release, FetchAndStage returns an
+// *UpdateWithheldError before downloading release assets. No files are written
+// on error.
 func (u *Updater) FetchAndStage(currentVersion string) error {
 	if currentVersion == "dev" || os.Getenv(u.EnvDisable) == "1" {
 		return nil
@@ -78,6 +117,9 @@ func (u *Updater) FetchAndStage(currentVersion string) error {
 	if !isNewer(tag, currentVersion) {
 		return nil
 	}
+	if err := u.checkVersionPolicy(currentVersion, tag); err != nil {
+		return err
+	}
 
 	stageDir, err := u.stagingDir(tag)
 	if err != nil {
@@ -90,6 +132,16 @@ func (u *Updater) FetchAndStage(currentVersion string) error {
 	}
 
 	return u.stageRelease(tag, stageDir, stagedBin)
+}
+
+func (u *Updater) checkVersionPolicy(currentVersion, candidateVersion string) error {
+	if u.VersionPolicy == nil || u.VersionPolicy(currentVersion, candidateVersion) {
+		return nil
+	}
+	return &UpdateWithheldError{
+		CurrentVersion:   currentVersion,
+		CandidateVersion: candidateVersion,
+	}
 }
 
 func (u *Updater) fetchLatestTag() (string, error) {
