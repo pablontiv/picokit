@@ -18,7 +18,7 @@ jobs:
       coverage-threshold: 85
 
   gitleaks:
-    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/gitleaks.yml@v2
 
   # coverage-gate intentionally does NOT delegate to crossbeam: it dogfoods this
   # repo's own pkcov tool (cmd/pkcov) for per-package floors. Extract to a
