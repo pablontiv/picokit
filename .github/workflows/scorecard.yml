@@ -8,7 +8,7 @@ permissions: read-all
 
 jobs:
   scorecard:
-    uses: pablontiv/crossbeam/.github/workflows/scorecard.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/scorecard.yml@v2
     permissions:
       security-events: write
       id-token: write
