@@ -34,7 +34,7 @@ jobs:
       - run: go run ./cmd/pkcov check --profile coverage.out --floors .coverage-floors.toml
 
   release:
-    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v1
+    uses: pablontiv/crossbeam/.github/workflows/go-release.yml@v2
     needs: [ci, gitleaks, coverage-gate]
     if: github.event_name == 'push'
     with:
